@@ -5,13 +5,10 @@ import random
 from collections import deque
 from itertools import accumulate
 import copy
-
 import torch
 import torch.nn as nn
 from torch_geometric.data import Batch
-
 from gym.spec_gym import SpecGym
-
 from agents.discrete_agent import DiscreteAgent
 from nodeFlowsheeter.flowsheetEncoder import FlowsheetEncoder
 
@@ -56,25 +53,47 @@ running_avg_window = 100
 
 
 # ==================== Initialization ====================
-agent = DiscreteAgent(in_channels=in_channels, out_channels=out_channels,
-                           edge_attr_dim=edge_attr_dim, hidden_dim=hidden_dim,
-                           hidden_channels=hidden_channels,
-                           num_actions=num_actions, lr=learning_rate,
-                           depth=depth).to(device)
+# Saving
+save = True
+save_name = 'fixed_comp'
 
-tfl = False
-if tfl:
+# Make gym
+comp_mode = 'light'
+node_types = ['feed', 'output', 'empty', 'ideal_dstwu']
+
+feed_flow = 100
+components = ['cyclo-pentane', 'n-hexane', 'n-heptane', 'n-octane']
+feed_composition = np.array([0.4, 0.3, 0.2, 0.1])
+
+
+gym = SpecGym(comp_mode='light', feed_flow=feed_flow,
+              components=components,
+              feed_composition=feed_composition,
+              node_types=node_types)
+
+
+# Transfer learning
+# If true you can pick up previous weights and architecture and train
+# i.e. if you first train on light fixed mixture (see: spec_gym.py)
+# and then use the weights to train on random, performance increases
+transfer_learning = False
+if transfer_learning:
     arch_params = torch.load("checkpoints/agent_architecture_r8.pth")
     agent = DiscreteAgent(**arch_params)
     agent.load_state_dict(torch.load("checkpoints/agent_weights_r8.pth"))
     agent.to(device)
 
+else:
+    agent = DiscreteAgent(in_channels=in_channels, out_channels=out_channels,
+                            edge_attr_dim=edge_attr_dim, hidden_dim=hidden_dim,
+                            hidden_channels=hidden_channels,
+                            num_actions=num_actions, lr=learning_rate,
+                            depth=depth).to(device)
+
 agent.train()
 
 
-gym = SpecGym()
 loss_fn = nn.HuberLoss()
-
 reward_history = np.zeros(epochs)
 loss_history = np.zeros(epochs)
 best_reward = 0
@@ -273,5 +292,6 @@ architecture_params = {
     "depth": depth
 }
 
-#torch.save(agent.state_dict(), "agent_weights_r8.pth")
-#torch.save(architecture_params, "agent_architecture_r8.pth")
+if save and save_name:
+    torch.save(agent.state_dict(), f"checkpoints/agent_weights_{save_name}.pth")
+    torch.save(architecture_params, f"checkpoints/agent_architecture_{save_name}.pth")

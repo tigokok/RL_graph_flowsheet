@@ -7,13 +7,18 @@ from nodeFlowsheeter.simulation import Simulation
 class SpecGym(gym.Env):
 
     # Initialize gym
-    def __init__(self):
+    def __init__(self, comp_mode='light',
+                 feed_flow = 100,
+                 components = ['cyclo-pentane', 'n-hexane', 'n-heptane', 'n-octane'],
+                 feed_composition = np.array([0.4, 0.3, 0.2, 0.1]),
+                 node_types = ['feed', 'output', 'empty', 'ideal_dstwu']):
                 
         ## VARIABLES
-        self.feed_flow = 100                      
-        self.feed_composition = np.array([0.4, 0.3, 0.2, 0.1]) 
-        self.components = ['cyclo-pentane', 'n-hexane', 'n-heptane', 'n-octane'] # fixed for now
-        self.node_types = ['feed', 'output', 'empty', 'ideal_dstwu']
+        self.comp_mode = comp_mode
+        self.feed_flow = feed_flow                    
+        self.feed_composition = feed_composition
+        self.components = components
+        self.node_types = node_types
 
         # Initialize flowsheet
         self.flowsheet = Flowsheet(self.node_types, name = 'Gym flowsheet')
@@ -32,21 +37,32 @@ class SpecGym(gym.Env):
     def reset(self):
         self.flowsheet.reset()
 
-        '''
-        if np.random.rand() > 0.5:
-            self.feed_composition = np.array([0.4, 0.3, 0.2, 0.1]) 
-        else:
-            self.feed_composition = np.array([0.1, 0.2, 0.3, 0.4])
-        '''
+        match self.comp_mode:
+            case 'light':
+                self.feed_composition = np.array([0.1, 0.2, 0.3, 0.4])
 
-        #initial_composition = np.array([0.4, 0.3, 0.2, 0.1]) 
-        #dev = np.random.normal(loc=0, scale=0.05, size=len(self.components))
-        #vec = initial_composition + dev
-        #self.feed_composition = vec/vec.sum()
-        vec = np.random.rand(len(self.components)) + 0.1
-        self.feed_composition = vec / vec.sum()
+            case 'light_var':
+                initial_composition = np.array([0.4, 0.3, 0.2, 0.1]) 
+                dev = np.random.normal(loc=0, scale=0.05, size=len(self.components))
+                vec = initial_composition + dev
+                self.feed_composition = vec/vec.sum()
+            
+            case 'heavy':
+                self.feed_composition = np.array([0.1, 0.2, 0.3, 0.4]) 
 
+            case 'heavy_var':
+                initial_composition = np.array([0.1, 0.2, 0.3, 0.4]) 
+                dev = np.random.normal(loc=0, scale=0.05, size=len(self.components))
+                vec = initial_composition + dev
+                self.feed_composition = vec/vec.sum()
 
+            case 'random':
+                vec = np.random.rand(len(self.components)) + 0.1
+                self.feed_composition = vec / vec.sum()
+
+        # Place feed node and empty node
+        # and connect the feed to the empty node to start
+        # TODO: possible create scenario's, like starting with something
         feed = FeedNode(self.flowsheet.unique_id(), self.feed_flow, self.feed_composition)
         first_node = EmptyNode(self.flowsheet.unique_id())
         self.flowsheet.add_unit([feed, first_node])
@@ -67,6 +83,8 @@ class SpecGym(gym.Env):
         node_type = action[1]
 
         # Place new node
+        # Currently: only 2 actions
+        # possible to extend GNN to different actions, i.e. other node types
         match node_type:
             case 0:
                 output = OutputNode(node_id)
@@ -81,7 +99,7 @@ class SpecGym(gym.Env):
                 self.flowsheet.connect(dstwu.node_id, [dist.node_id, bot.node_id])
 
         # Run simulation
-        
+        # Done if fails
         try:
             self.sim.run_simulation()  
         except:
@@ -107,13 +125,12 @@ class SpecGym(gym.Env):
         # Reward placing output on spec
         if node_type == 0:
             if output.purity > self.spec:
-                reward = (output.flowrate / 100)
+                reward = (output.flowrate / self.feed_flow)
             else:
-                reward = -(output.flowrate / 100)
+                reward = -(output.flowrate / self.feed_flow)
 
 
 
-        
         
         # Append to histories for plotting
         self.reward_history.append(reward)
