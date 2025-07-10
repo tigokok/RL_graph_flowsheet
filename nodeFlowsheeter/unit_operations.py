@@ -47,11 +47,11 @@ def h_evap(component_properties, composition):
         composition (np.array): Composition of all components
 
     Returns:
-        np.array: Enthalpy of evaporation for all components
+        np.array: Enthalpy of evaporation for all components in kJ / mol
     """
     dhv_properties = [comp['dhv'] for comp in component_properties]
     _, temp = bulk_distillate_props(component_properties, composition) 
-    
+
     dhv_values = []
     for p in dhv_properties:
         a, b, c, d, e, f, g = p
@@ -204,7 +204,6 @@ def dstwu_unit(input_streams, light_key, heavy_key, recovery_lk, recovery_hk, co
     
     # Calculate Q
     Q = 1.1 * (R_min + 1) * h_evap(component_properties, z_bot)
-    print(Q)
 
     V_top = distillate_flow * (1 + R)
     M_top, T_top = bulk_distillate_props(component_properties, z_dist)
@@ -331,4 +330,4 @@ def ideal_dstwu(input_streams, spec=.9, recovery_lk = 0.99, recovery_hk = 0.01):
     distillate = {'flowrate': distillate_flow, 'composition': z_dist}
     bottom = {'flowrate': bottom_flow, 'composition': z_bot}
     
-    return distillate, bottom
+    return distillate, bottom, light_key, heavy_key

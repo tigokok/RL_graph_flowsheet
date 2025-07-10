@@ -66,5 +66,8 @@ class IdealDstwuNode(Node):
         self.spec = spec
         self.recov_lk = recov_lk
         self.recov_hk = recov_hk
+
+        self.lk = None
+        self.hk = None
         
 

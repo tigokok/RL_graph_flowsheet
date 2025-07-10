@@ -15,6 +15,14 @@ class Simulation:
         self.tolerance = 1e-3
         self.max_iterations = 15
 
+    def get_incoming_streams(self, node_id):
+        input_streams = [self.streams[(src, tgt)] for src, tgt in self.flowsheet.edges if tgt == node_id]
+        return input_streams
+
+    def get_outgoing_streams(self, node_id):
+        output_streams = [self.streams[(src, tgt)] for src, tgt in self.flowsheet.edges if src == node_id]
+        return output_streams
+
     def weighted_pure_price(self, feed):
         pp_mole = np.array([component['pp_mole'] for component in self.component_properties])
         return np.dot(pp_mole, feed.composition)
@@ -67,16 +75,18 @@ class Simulation:
                         assert len(input_streams) == 1, f'Unit {node_id} should have 1 input. Check mixer behaviour'
                         assert len(output_streams) == 2, f'Unit {node_id}, type {node.node_type}, should have 2 outputs. Check definition'
                         
-                        distillate, bottom = ideal_dstwu(input_streams,
+                        distillate, bottom, lk, hk = ideal_dstwu(input_streams,
                                                         node.spec,
                                                         node.recov_lk, node.recov_hk)
+                        node.lk = lk
+                        node.hk = hk
                         self.streams[output_edges[0]] = distillate
                         self.streams[output_edges[1]] = bottom
 
                     case 'dstwu':
                         assert len(input_streams) == 1, f'Unit {node_id} should have 1 input. Check mixer behaviour'
                         assert len(output_streams) == 2, f'Unit {node_id}, type {node.node_type}, should have 2 outputs. Check definition'
-                        
+    
                         distillate, bottom, params = dstwu_unit(input_streams, 
                                                                 node.lk, node.hk, 
                                                                 node.recov_lk, node.recov_hk,

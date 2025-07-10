@@ -36,13 +36,13 @@ depth = 2
 training_stride = 10
 train_amount = 5
 learning_rate = 0.0005
-gamma = 0.7
-epochs = 8000
-max_steps = 8
+gamma = 0.85
+epochs = 4000
+max_steps = 15
 
 # Epsilon-greedy exploration parameters
-epsilon_lower = 0.0
-epsilon_upper = 0.90
+epsilon_lower = 0
+epsilon_upper = 0.9
 
 # Replay buffer parameters
 buffer_size = 250
@@ -54,11 +54,11 @@ running_avg_window = 100
 
 # ==================== Initialization ====================
 # Saving
-save = True
+save = False
 save_name = 'fixed_comp'
 
 # Make gym
-comp_mode = 'light'
+comp_mode = 'match_init'
 node_types = ['feed', 'output', 'empty', 'ideal_dstwu']
 
 feed_flow = 100
@@ -66,7 +66,7 @@ components = ['cyclo-pentane', 'n-hexane', 'n-heptane', 'n-octane']
 feed_composition = np.array([0.4, 0.3, 0.2, 0.1])
 
 
-gym = SpecGym(comp_mode='light', feed_flow=feed_flow,
+gym = SpecGym(comp_mode=comp_mode, feed_flow=feed_flow,
               components=components,
               feed_composition=feed_composition,
               node_types=node_types)
@@ -94,7 +94,7 @@ agent.train()
 
 
 loss_fn = nn.HuberLoss()
-reward_history = np.zeros(epochs)
+spec_history = np.zeros(epochs)
 loss_history = np.zeros(epochs)
 best_reward = 0
 
@@ -175,9 +175,9 @@ for ep in tqdm(range(epochs)):
 
     # Reward history for now defined as the amount recovered
     try:
-        reward_history[ep] = flowsheet.amount_on_spec(0.9)
+        spec_history[ep] = flowsheet.amount_on_spec(0.9)
     except:
-        reward_history[ep] = 0
+        spec_history[ep] = 0
 
     # Training loop
     if ep % training_stride == 0 and len(replay_buffer) >= batch_size:
@@ -254,11 +254,11 @@ winner_flowsheet.print_streams()
 winner_flowsheet.display()
 
 # Plot rewards running average
-running_avg = np.convolve(reward_history, np.ones(running_avg_window) / running_avg_window, mode='valid')
+running_avg = np.convolve(spec_history, np.ones(running_avg_window) / running_avg_window, mode='valid')
 
 plt.figure(figsize=(10, 5))
-plt.scatter(range(len(reward_history)), reward_history, color=light_tone, label='Rewards', s=10)
-plt.plot(range(running_avg_window - 1, len(reward_history)), running_avg, color=dark_tone, label=f'Running average (window={running_avg_window})')
+plt.scatter(range(len(spec_history)), spec_history, color=light_tone, label='Rewards', s=10)
+plt.plot(range(running_avg_window - 1, len(spec_history)), running_avg, color=dark_tone, label=f'Running average (window={running_avg_window})')
 plt.xlabel('Episode')
 plt.ylabel('Product flow on spec [-]')
 plt.title('Fraction of product on-spec during training')

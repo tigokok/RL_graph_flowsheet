@@ -39,23 +39,23 @@ def internalCosts(height, diameter, f_m = 1.0, f_int_s = 1.4, f_int_t = 0.0, f_i
     f_int_c = f_int_s + f_int_t + f_int_m
     return 0.9 * (M_S / 280) * 97.24 * diameter**1.55 * height * f_int_c
 
-def reboilerArea(Q_rbl, T_bot, K_rbl = 800, T_steam = 201):
+def reboilerArea(Q_rbl, T_bot, K_rbl = 800, T_steam = 201 + 273):
     assert T_steam > T_bot, f'T_bot {T_bot}  smaller than T_steam {T_steam}, infeasible'
-    A = Q_rbl / (K_rbl * (T_steam - T_bot))
+    A = Q_rbl / (K_rbl * (T_steam - T_bot)) * 1000
     return A
 
 def reboilerCosts(Q_rbl, T_bot, F_rbl_c = 0.8):
     A_rbl = reboilerArea(Q_rbl, T_bot)
     return 0.9 * (M_S / 280) * 474.67 * A_rbl**0.65 * F_rbl_c
 
-def condensorArea(Q_cnd, T, K_cnd = 500, T_cool_in = 30, T_cool_out = 40):
-    lmtd = ((T - T_cool_in) * (T - T_cool_out) * ((T - T_cool_in) + (T - T_cool_out)) / 2)**1/3
-    A_cnd = Q_cnd / (K_cnd * lmtd)
+def condensorArea(Q_cnd, T, K_cnd = 500, T_cool_in = 30 + 273, T_cool_out = 40 + 273):
+    lmtd = ((T - T_cool_in) * (T - T_cool_out) * ((T - T_cool_in) + (T - T_cool_out)) / 2)**(1/3)
+    A_cnd = Q_cnd / (K_cnd * lmtd) * 1000
     return A_cnd
 
 def condensorCosts(Q_cnd, T_top, F_cnd_c = 0.8):
     A_cnd = condensorArea(Q_cnd, T_top)
-    return 0.9 * (M_S / 280) * 474.67 * A_cnd ^ 0.65 * F_cnd_c
+    return 0.9 * (M_S / 280) * 474.67 * A_cnd ** 0.65 * F_cnd_c
 
 def condensorOperation(Q_cnd):
     return Q_cnd * C_CW / (CP * (T_COOL_OUT - T_COOL_IN)) 
@@ -69,13 +69,15 @@ def investmentCosts(dstwuNode):
 
     column = columnCosts(height, diameter)
     internals = internalCosts(height, diameter)
-    reboiler = 0 #reboilerCosts(dstwuNode.Q, dstwuNode.T_bot)
-    condensor = 0 #condensorCosts(dstwuNode.Q, dstwuNode.T_top)
+    reboiler = reboilerCosts(dstwuNode.Q, dstwuNode.T_bot)
+    condensor = condensorCosts(dstwuNode.Q, dstwuNode.T_top)
+
     return column + internals + reboiler + condensor
 
 def operatingCosts(dstwuNode):
     reboiler = reboilerOperation(dstwuNode.Q)
     condensor = condensorOperation(dstwuNode.Q)
+    
     return (reboiler + condensor) * 3600 * OP_HOURS
 
 def tac(dstwuNode):

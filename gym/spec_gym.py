@@ -38,6 +38,9 @@ class SpecGym(gym.Env):
         self.flowsheet.reset()
 
         match self.comp_mode:
+            case 'match_init':
+                self.feed_composition = self.feed_composition
+                
             case 'light':
                 self.feed_composition = np.array([0.1, 0.2, 0.3, 0.4])
 
