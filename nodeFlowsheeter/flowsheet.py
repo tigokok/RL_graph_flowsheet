@@ -1,4 +1,6 @@
 import nodeFlowsheeter.price_functions as pr
+import matplotlib.pyplot as plt
+import networkx as nx
 class Flowsheet():
     def __init__(self, node_types, name = 'Flowsheet name'):
         """Initializes a flowsheet object
@@ -118,11 +120,13 @@ class Flowsheet():
             _type_: _description_
         """
         value = 0
+        tac = 0
         max_value = 1
         for node_id, node in self.nodes.items():
                 match node.node_type:
                     case 'dstwu':
                         val = pr.tac(node)
+                        tac += val
                     case 'output':
                         val = pr.output_price(node, spec)
                     case 'empty':
@@ -135,7 +139,7 @@ class Flowsheet():
                         
                 value += val
 
-        return value / max_value
+        return value / max_value, tac
     
     def amount_on_spec(self, spec, count_empty = False):
         on_spec = 0
@@ -147,3 +151,126 @@ class Flowsheet():
                 on_spec += node.flowrate
                 
         return on_spec / 100
+    
+    def display_graph(self):
+        """Displays the flowsheet with a left-to-right layout, placing outputs up/down and highlighting columns."""
+        from matplotlib.colors import to_rgb
+        import matplotlib.pyplot as plt
+        import networkx as nx
+        from collections import defaultdict, deque
+
+        light_tone = to_rgb("#B8B3E9")
+        dark_tone = to_rgb("#5D51CD")
+        light_tone_alt = to_rgb("#F3DFC1")
+        dark_tone_alt = to_rgb("#DB9E43")
+
+        G = nx.DiGraph()
+
+        # Add nodes with appropriate labels
+        for node_id, node in self.nodes.items():
+            node_type = node.node_type
+            if node_type == 'column':
+                label = (
+                    f'ID: {node_id}\n'
+                    f'Column\n'
+                    f'lk: {getattr(node, "lk", "–")}, hk: {getattr(node, "hk", "–")}\n'
+                    f'recov_lk: {getattr(node, "recov_lk", "–")}, recov_hk: {getattr(node, "recov_hk", "–")}'
+                )
+            else:
+                label = f'ID: {node_id}\n{node_type}'
+            G.add_node(node_id, label=label, type=node_type)
+
+        for src, tgt in self.edges:
+            G.add_edge(src, tgt)
+
+        # Format edge labels: flowrate and formatted composition
+        edge_labels = {}
+        for edge in self.edges:
+            stream = self.streams.get(edge, {})
+            flowrate = stream.get("flowrate")
+            comp = stream.get("composition")
+            label = ''
+            if flowrate is not None:
+                label += f'flow: {flowrate:.2f}'
+            if comp is not None:
+                comp_lines = [f'{format(comp[i], ".3f")}' for i in range(len(comp))]
+                label += '\n' + '\n'.join(comp_lines)
+
+            edge_labels[edge] = label
+
+
+        # Step 1: Compute depth from feeds using BFS
+        in_deg = {n: 0 for n in G.nodes}
+        for u, v in G.edges:
+            in_deg[v] += 1
+
+        depth = {}
+        queue = deque([n for n in G.nodes if in_deg[n] == 0])
+        for n in queue:
+            depth[n] = 0
+
+        while queue:
+            node = queue.popleft()
+            for succ in G.successors(node):
+                depth[succ] = max(depth.get(succ, 0), depth[node] + 1)
+                in_deg[succ] -= 1
+                if in_deg[succ] == 0:
+                    queue.append(succ)
+
+        # Step 2: Assign positions
+        pos = {}
+        y_tracker = defaultdict(int)
+        output_offsets = defaultdict(int)
+
+        for node_id in sorted(G.nodes, key=lambda n: depth[n]):
+            node_type = G.nodes[node_id]['type']
+            d = depth[node_id]
+            if node_type == 'output':
+                preds = list(G.predecessors(node_id))
+                if preds:
+                    x = depth[preds[0]]
+                    offset = 1.5 if output_offsets[x] == 0 else -1.5
+                    y = pos[preds[0]][1] + offset
+                    output_offsets[x] += 1
+                    pos[node_id] = (x, y)
+                    continue
+            x = d
+            y = -y_tracker[d]
+            pos[node_id] = (x, y)
+            y_tracker[d] += 1
+
+        # Step 3: Drawing
+        plt.figure(figsize=(10, 6), layout = 'tight')
+        node_labels = nx.get_node_attributes(G, 'label')
+
+        node_sizes = []
+        node_colors = []
+        for node in G.nodes:
+            typ = G.nodes[node]['type']
+            if typ in ['output', 'column']:
+                node_sizes.append(3200)
+                node_colors.append(light_tone)  # Orange-ish
+            else:
+                node_sizes.append(3200)
+                node_colors.append(light_tone_alt)  # Light blue
+
+        nx.draw_networkx_nodes(G, pos, node_size=node_sizes, node_color=node_colors, edgecolors='black', node_shape='s')
+        nx.draw_networkx_edges(G, pos, edge_color='gray', arrows=True, arrowsize=15, width=1.4, connectionstyle="arc3,rad=0.05")
+        nx.draw_networkx_labels(G, pos, labels=node_labels, font_color='black', font_size=8)
+
+        # Edge labels: horizontal alignment
+        nx.draw_networkx_edge_labels(
+            G,
+            pos,
+            edge_labels=edge_labels,
+            font_size=8,
+            font_color=dark_tone,
+            label_pos=0.5,
+            rotate=False
+        )
+
+        plt.title(f'Flowsheet: {self.name}', fontsize=14)
+        plt.axis('off')
+        plt.tight_layout()
+        plt.show()
+
