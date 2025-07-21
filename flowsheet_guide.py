@@ -1,3 +1,4 @@
+# ----- 1 -----
 import numpy as np
 from nodeFlowsheeter.flowsheet import *
 from nodeFlowsheeter.nodes import *
@@ -5,6 +6,7 @@ from nodeFlowsheeter.simulation import Simulation
 from nodeFlowsheeter.flowsheetEncoder import FlowsheetEncoder
 import torch
 
+# ----- 2 -----
 # Set parameters
 # feed_flow in mol/sec
 # Components: choose from properties.py
@@ -13,7 +15,7 @@ feed_flow = 100
 components = ['cyclo-pentane', 'n-hexane', 'n-heptane', 'n-octane']
 feed_composition = np.array([0.4, 0.3, 0.2, 0.1])
 
-
+# ----- 3 -----
 # Make nodes
 feed = FeedNode('feed', feed_flow, feed_composition)
 C1 = DstwuNode('C1', lk = 0, hk = 1, recov_lk = 0.99, recov_hk = 0.01)
@@ -23,6 +25,7 @@ C2 = DstwuNode('C2', lk = 1, hk = 2, recov_lk = 0.99, recov_hk = 0.01)
 C2_top = EmptyNode('C2_top')
 C2_bot = EmptyNode('C2_bot')
 
+# ----- 4 -----
 # Initialize flowsheet object
 node_types = ['feed', 'output', 'empty', 'dstwu']
 flowsheet_example = Flowsheet(node_types=node_types,
@@ -32,27 +35,32 @@ flowsheet_example = Flowsheet(node_types=node_types,
 # You can add more than 1!
 flowsheet_example.add_unit([feed, C1, C1_top, C2, C2_top, C2_bot])
 
+# ----- 5 -----
 # Connect nodes
 flowsheet_example.connect('feed', 'C1')
 flowsheet_example.connect('C1', ['C1_top', 'C2'])
 flowsheet_example.connect('C2', ['C2_top', 'C2_bot'])
 
+# ----- 6 -----
 # Display connections in console
 flowsheet_example.display()
 
+# ----- 7 -----
 # Initialize a simulation object
 sim = Simulation(flowsheet = flowsheet_example, components = components)
 
-
+# ----- 8 -----
 # Run the flowsheet
 sim.run_simulation()
 
+# ----- 9 -----
 # Estimate value
 # Value is normalized by the maximum value one could achieve if all components
 # were to be separated perfectly and sold.
 # 1 is not achieveable as there's always a separation cost.
 print(f'VALUE: {flowsheet_example.estimate_flowsheet_value(spec = 0.9) * 100}% of max sell value')
 
+# ----- 10 -----
 # Print streams from flowsheet
 flowsheet_example.print_streams()
 
@@ -69,6 +77,7 @@ if debug:
     #print(flowsheet_example.edges)
     #print(flowsheet_example.streams)
 
+# ----- 11 -----
 # Encode flowsheet for GNN
 # This function takes a flowsheet object as input and makes it into a PyG Data object
 # used to store graphs
