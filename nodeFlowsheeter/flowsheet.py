@@ -149,8 +149,11 @@ class Flowsheet():
             
             if count_empty and node.node_type == 'empty' and node.purity > spec:
                 on_spec += node.flowrate
+            
+            if node.node_type == 'feed':
+                flowrate = node.flowrate
                 
-        return on_spec / 100
+        return on_spec / flowrate
     
     def display_graph(self):
         """Displays the flowsheet with a left-to-right layout, placing outputs up/down and highlighting columns."""
@@ -169,12 +172,15 @@ class Flowsheet():
         # Add nodes with appropriate labels
         for node_id, node in self.nodes.items():
             node_type = node.node_type
-            if node_type == 'column':
+            if node_type == 'dstwu':
                 label = (
                     f'ID: {node_id}\n'
                     f'Column\n'
                     f'lk: {getattr(node, "lk", "–")}, hk: {getattr(node, "hk", "–")}\n'
-                    f'recov_lk: {getattr(node, "recov_lk", "–")}, recov_hk: {getattr(node, "recov_hk", "–")}'
+                    f'Stages: {getattr(node, "N", "-")}\n'
+                    f'RR: {format(getattr(node, "R", "-"), ".3f")}\n'
+                    f'η_lk: {format(getattr(node, "recov_lk", "–"), ".3f")}\n'
+                    f'η_hk: {format(getattr(node, "recov_hk", "–"), ".3f")}'
                 )
             else:
                 label = f'ID: {node_id}\n{node_type}'
@@ -247,8 +253,8 @@ class Flowsheet():
         node_colors = []
         for node in G.nodes:
             typ = G.nodes[node]['type']
-            if typ in ['output', 'column']:
-                node_sizes.append(3200)
+            if typ in ['dstwu']:
+                node_sizes.append(4200)
                 node_colors.append(light_tone)  # Orange-ish
             else:
                 node_sizes.append(3200)

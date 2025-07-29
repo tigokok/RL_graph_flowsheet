@@ -39,7 +39,7 @@ save = False
 save_name = 'fixed_comp'
 
 # Make gym
-comp_mode = 'random'
+comp_mode = 'light'
 node_types = ['feed', 'output', 'empty', 'ideal_dstwu']
 
 feed_flow = 100
@@ -106,6 +106,7 @@ from nodeFlowsheeter.simulation import Simulation
 from nodeFlowsheeter.nodes import *
 from scipy.optimize import minimize
 import numpy as np
+from scipy.optimize import differential_evolution
 
 column_ids = []
 initial_params = []
@@ -123,8 +124,8 @@ for node_id, node in flowsheet.nodes.items():
 # Bounds: for each column two parameters (lk_recov, hk_recov)
 bounds = []
 for _ in column_ids:
-    bounds.append((0.75, 0.99))  # lk_recov bounds
-    bounds.append((0.01, 0.1))   # hk_recov bounds
+    bounds.append((0.60, 0.99))  # lk_recov bounds
+    bounds.append((0.01, 0.25))   # hk_recov bounds
 
 profit_log = []
 params_log = []
@@ -154,13 +155,23 @@ def run_sim(params):
 
     qs = []
     for i in column_ids:
-        qs.append(flowsheet.nodes[i].Q)
+        qs.append(flowsheet.nodes[i].Q_dist + flowsheet.nodes[i].Q_bot)
     Q_log.append(qs)
 
     return -val  # minimize negative profit = maximize profit
 
-result = minimize(run_sim, initial_params, bounds=bounds, method='Nelder-Mead')
+# result = minimize(run_sim, initial_params, bounds=bounds, method='Nelder-Mead')
 
+from scipy.optimize import differential_evolution
+result = differential_evolution(
+    run_sim,
+    bounds=bounds,
+    strategy='best1bin',
+    maxiter=200,
+    popsize=15,
+    tol=1e-6,
+    polish=True
+)
 
 
 # Run flowsheet one last time with optimal params
@@ -214,3 +225,25 @@ plt.legend(loc=1)
 plt.show()
 
 flowsheet.display_graph()
+
+qdist = []
+qbot = []
+rr = []
+nr = []
+Ttop = []
+Tbot = []
+
+for i in column_ids:
+    qdist.append(flowsheet.nodes[i].Q_dist)
+    qbot.append(flowsheet.nodes[i].Q_bot)
+    rr.append(flowsheet.nodes[i].R_min)
+    nr.append(flowsheet.nodes[i].N_min)
+    Ttop.append(flowsheet.nodes[i].T_top)
+    Tbot.append(flowsheet.nodes[i].T_bot)
+print('---')
+print(qdist)
+print(qbot)
+print(rr)
+print(nr)
+print(Ttop)
+print(Tbot)

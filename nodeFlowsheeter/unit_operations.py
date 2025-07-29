@@ -89,12 +89,13 @@ def underwood(z_feed, z_dist, alpha, light_key):
 
     Args:
         z_feed (np.array): Composition of the feed
-        z_feez_distd (np.array): Composition of the distillate
+        z_dist (np.array): Composition of the distillate
         alpha (np.array): Relative volatilities of all components
         alpha (np.array): Relative volatilities of all components
 
     Returns:
         Float: Minimum reflux ratio
+
     """
     theta = underwood_theta(z_feed, alpha, light_key)
     return np.sum(z_dist * alpha / (alpha - theta)) - 1
@@ -196,20 +197,21 @@ def dstwu_unit(input_streams, light_key, heavy_key, recovery_lk, recovery_hk, co
     R_min = underwood(feed_comp, z_dist, rel_vol, light_key)
 
     R = R_min * 1.1
-    N = gilliland(R_min, N_min, R)
+    N = int(np.ceil(gilliland(R_min, N_min, R)))
 
 
     distillate = {'flowrate': distillate_flow, 'composition': z_dist}
     bottom = {'flowrate': bottom_flow, 'composition': z_bot}
-    
+
     # Calculate Q
-    Q = 1.1 * (R_min + 1) * h_evap(component_properties, z_bot)
+    Q_bot = 1.1 * (R_min + 1) * h_evap(component_properties, z_bot) * bottom_flow
+    Q_dist = 1.1 * (R_min + 1) * h_evap(component_properties, z_dist) * distillate_flow
 
     V_top = distillate_flow * (1 + R)
     M_top, T_top = bulk_distillate_props(component_properties, z_dist)
     M_bot, T_bot = bulk_distillate_props(component_properties, z_bot)
 
-    params = (R_min, R, N_min, N, Q, 
+    params = (R_min, R, N_min, N, Q_dist, Q_bot, 
               V_top, M_top, T_top,
               M_bot, T_bot)
     return distillate, bottom, params

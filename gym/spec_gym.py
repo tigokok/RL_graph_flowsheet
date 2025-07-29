@@ -42,7 +42,7 @@ class SpecGym(gym.Env):
                 self.feed_composition = self.feed_composition
                 
             case 'light':
-                self.feed_composition = np.array([0.1, 0.2, 0.3, 0.4])
+                self.feed_composition = np.array([0.4, 0.3, 0.2, 0.1])
 
             case 'light_var':
                 initial_composition = np.array([0.4, 0.3, 0.2, 0.1]) 

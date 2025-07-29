@@ -58,7 +58,7 @@ sim.run_simulation()
 # Value is normalized by the maximum value one could achieve if all components
 # were to be separated perfectly and sold.
 # 1 is not achieveable as there's always a separation cost.
-print(f'VALUE: {flowsheet_example.estimate_flowsheet_value(spec = 0.9) * 100}% of max sell value')
+print(f'VALUE: {flowsheet_example.estimate_flowsheet_value(spec = 0.9)}% of max sell value')
 
 # ----- 10 -----
 # Print streams from flowsheet
@@ -83,6 +83,7 @@ if debug:
 # used to store graphs
 td = FlowsheetEncoder(flowsheet_example, len(components), verbose = True)
 
+# ----- 12 -----
 # Reset the flowsheet
 flowsheet_example.reset()
 flowsheet_example.display()

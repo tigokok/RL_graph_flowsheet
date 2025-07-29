@@ -43,7 +43,8 @@ class DstwuNode(Node):
         self.R          = None
         self.N_min      = None
         self.N          = None
-        self.Q          = None
+        self.Q_dist     = None
+        self.Q_bot      = None
 
         # Distillate vapor flow for column sizing only
         self.V_top = None
@@ -55,7 +56,7 @@ class DstwuNode(Node):
         self.T_bot = None
 
     def set_params(self, params):
-        (self.R_min, self.R, self.N_min, self.N, self.Q, 
+        (self.R_min, self.R, self.N_min, self.N, self.Q_dist, self.Q_bot, 
         self.V_top, self.M_top, self.T_top,
         self.M_bot, self.T_bot) = params 
 

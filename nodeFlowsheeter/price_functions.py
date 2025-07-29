@@ -69,14 +69,14 @@ def investmentCosts(dstwuNode):
 
     column = columnCosts(height, diameter)
     internals = internalCosts(height, diameter)
-    reboiler = reboilerCosts(dstwuNode.Q, dstwuNode.T_bot)
-    condensor = condensorCosts(dstwuNode.Q, dstwuNode.T_top)
+    reboiler = reboilerCosts(dstwuNode.Q_bot, dstwuNode.T_bot)
+    condensor = condensorCosts(dstwuNode.Q_dist, dstwuNode.T_top)
 
     return column + internals + reboiler + condensor
 
 def operatingCosts(dstwuNode):
-    reboiler = reboilerOperation(dstwuNode.Q)
-    condensor = condensorOperation(dstwuNode.Q)
+    reboiler = reboilerOperation(dstwuNode.Q_bot)
+    condensor = condensorOperation(dstwuNode.Q_dist)
     
     return (reboiler + condensor) * 3600 * OP_HOURS
 

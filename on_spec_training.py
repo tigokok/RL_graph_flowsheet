@@ -36,9 +36,9 @@ depth = 2
 training_stride = 10
 train_amount = 5
 learning_rate = 0.0005
-gamma = 0.85
-epochs = 4000
-max_steps = 15
+gamma = 0.7
+epochs = 6000
+max_steps = 12
 
 # Epsilon-greedy exploration parameters
 epsilon_lower = 0
@@ -54,11 +54,11 @@ running_avg_window = 100
 
 # ==================== Initialization ====================
 # Saving
-save = False
-save_name = 'fixed_comp'
+save = True
+save_name = 'light_comp_4k'
 
 # Make gym
-comp_mode = 'match_init'
+comp_mode = 'light'
 node_types = ['feed', 'output', 'empty', 'ideal_dstwu']
 
 feed_flow = 100
