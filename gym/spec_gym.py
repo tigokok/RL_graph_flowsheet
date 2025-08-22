@@ -11,7 +11,8 @@ class SpecGym(gym.Env):
                  feed_flow = 100,
                  components = ['cyclo-pentane', 'n-hexane', 'n-heptane', 'n-octane'],
                  feed_composition = np.array([0.4, 0.3, 0.2, 0.1]),
-                 node_types = ['feed', 'output', 'empty', 'ideal_dstwu']):
+                 node_types = ['feed', 'output', 'empty', 'ideal_dstwu'],
+                 spec = 0.9):
                 
         ## VARIABLES
         self.comp_mode = comp_mode
@@ -23,7 +24,7 @@ class SpecGym(gym.Env):
         # Initialize flowsheet
         self.flowsheet = Flowsheet(self.node_types, name = 'Gym flowsheet')
         self.sim = Simulation(self.flowsheet, self.components)
-        self.spec = 0.9
+        self.spec = spec
         
         # For plotting
         self.reward_history = []
@@ -62,6 +63,10 @@ class SpecGym(gym.Env):
             case 'random':
                 vec = np.random.rand(len(self.components)) + 0.1
                 self.feed_composition = vec / vec.sum()
+
+            case 'dirichlet':
+                alpha = np.ones(len(self.components))
+                self.feed_composition = np.random.dirichlet(alpha)
 
         # Place feed node and empty node
         # and connect the feed to the empty node to start
@@ -118,7 +123,7 @@ class SpecGym(gym.Env):
         # This rewards placing a column
 
         if node_type == 1:
-            current_on_spec = self.flowsheet.amount_on_spec(self.spec, count_empty=True)
+            current_on_spec = self.flowsheet.amount_on_spec(self.spec, count_empty=True) / self.feed_flow
             reward = (current_on_spec - self.on_spec)
             self.on_spec = current_on_spec
 
