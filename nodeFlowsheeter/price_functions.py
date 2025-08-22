@@ -81,7 +81,11 @@ def operatingCosts(dstwuNode):
     return (reboiler + condensor) * 3600 * OP_HOURS
 
 def tac(dstwuNode):
-    return -(investmentCosts(dstwuNode) + operatingCosts(dstwuNode))
+    investment = investmentCosts(dstwuNode)
+    operating = operatingCosts(dstwuNode)
+    carbon = carbon_tax(dstwuNode)
+
+    return -(investment + operating + carbon)
 
 def max_value(feedNode):
     mol_sec = feedNode.flowrate * feedNode.weighted_pure_price
@@ -96,3 +100,8 @@ def output_price(outputNode, spec = 0.90):
         value = 0
     
     return value
+
+def carbon_tax(dstwuNode, c = 0.1):
+    # c = EUR / kWh
+
+    return dstwuNode.Q_bot * c * OP_HOURS

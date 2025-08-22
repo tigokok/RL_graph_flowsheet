@@ -141,6 +141,20 @@ class Flowsheet():
 
         return value / max_value, tac
     
+    def price_split(self):
+        equipment = 0
+        operating = 0
+        carbon = 0
+        for node_id, node in self.nodes.items():
+                match node.node_type:
+                    case 'dstwu':
+                        equipment += pr.investmentCosts(node)
+                        operating += pr.operatingCosts(node)
+                        carbon += pr.carbon_tax(node)
+                        
+
+        return (equipment, operating, carbon)
+
     def amount_on_spec(self, spec, count_empty = False):
         on_spec = 0
         for node_id, node in self.nodes.items():
@@ -153,9 +167,9 @@ class Flowsheet():
             if node.node_type == 'feed':
                 flowrate = node.flowrate
                 
-        return on_spec / flowrate
+        return on_spec
     
-    def display_graph(self):
+    def display_graph(self, title = 'Flowsheet graph'):
         """Displays the flowsheet with a left-to-right layout, placing outputs up/down and highlighting columns."""
         from matplotlib.colors import to_rgb
         import matplotlib.pyplot as plt
@@ -253,7 +267,7 @@ class Flowsheet():
         node_colors = []
         for node in G.nodes:
             typ = G.nodes[node]['type']
-            if typ in ['dstwu']:
+            if typ in ['dstwu', 'ideal_dstwu']:
                 node_sizes.append(4200)
                 node_colors.append(light_tone)  # Orange-ish
             else:
@@ -275,8 +289,107 @@ class Flowsheet():
             rotate=False
         )
 
-        plt.title(f'Flowsheet: {self.name}', fontsize=14)
+        plt.title(f'{title}')
         plt.axis('off')
         plt.tight_layout()
         plt.show()
 
+    def get_topology(self, col_type):
+        """
+        Determines the flowsheet topology by tracing column connections from the feed.
+
+        Args:
+            col_type (str): The node_type string used to identify distillation columns 
+                            (e.g., 'dstwu' or 'ideal_dstwu')
+
+        Returns:
+            str: One of ['UU', 'UD', 'DU', 'DD', 'TR', 'U', 'D', 'S', 'O']
+        """
+        col_type = col_type.lower()
+
+        # Step 1: Find the feed node
+        feed_nodes = [nid for nid, node in self.nodes.items() if node.node_type.lower() == 'feed']
+        if not feed_nodes:
+            return 'O'
+        start_id = feed_nodes[0]
+
+        # Step 2: Find first node after feed
+        first_nodes = [tgt for src, tgt in self.edges if src == start_id]
+        if not first_nodes:
+            return 'O'
+        first_node_id = first_nodes[0]
+        first_node = self.nodes.get(first_node_id)
+
+        if first_node.node_type.lower() == 'output':
+            return 'SE'
+        
+        if first_node.node_type.lower() != col_type:
+            return 'O'
+
+        # Step 3: Get outputs from first column
+        out_edges = [(src, tgt) for src, tgt in self.edges if src == first_node_id]
+        if len(out_edges) != 2:
+            return 'O'
+
+        top_id, bot_id = out_edges[0][1], out_edges[1][1]
+        top_node = self.nodes.get(top_id)
+        bot_node = self.nodes.get(bot_id)
+
+        top_is_col = top_node.node_type.lower() == col_type
+        bot_is_col = bot_node.node_type.lower() == col_type
+
+        # Helper: Check if any column exists downstream from a node
+        def has_column_downstream(node_id):
+            visited = set()
+            stack = [node_id]
+            while stack:
+                current = stack.pop()
+                if current in visited:
+                    continue
+                visited.add(current)
+                for _, tgt in self.edges:
+                    if _ == current:
+                        tgt_node = self.nodes.get(tgt)
+                        if tgt_node.node_type.lower() == col_type:
+                            return True
+                        stack.append(tgt)
+            return False
+
+        # Step 4: Determine topology
+        if not top_is_col and not bot_is_col:
+            return 'SI'
+        if top_is_col and bot_is_col:
+            # Check that both stop there
+            if has_column_downstream(top_id) or has_column_downstream(bot_id):
+                return 'O'
+            return 'TR'
+        if top_is_col and not bot_is_col:
+            if has_column_downstream(top_id):
+                next_edges = [(src, tgt) for src, tgt in self.edges if src == top_id]
+                if len(next_edges) == 2:
+                    next_top = self.nodes.get(next_edges[0][1])
+                    if next_top.node_type.lower() == col_type:
+                        if has_column_downstream(next_edges[0][1]) or has_column_downstream(next_edges[1][1]):
+                            return 'O'
+                        return 'UU'
+                    else:
+                        return 'UD'
+                return 'U'
+            else:
+                return 'U'
+        if not top_is_col and bot_is_col:
+            if has_column_downstream(bot_id):
+                next_edges = [(src, tgt) for src, tgt in self.edges if src == bot_id]
+                if len(next_edges) == 2:
+                    next_bot = self.nodes.get(next_edges[1][1])
+                    if next_bot.node_type.lower() == col_type:
+                        if has_column_downstream(next_edges[0][1]) or has_column_downstream(next_edges[1][1]):
+                            return 'O'
+                        return 'DD'
+                    else:
+                        return 'DU'
+                return 'D'
+            else:
+                return 'D'
+
+        return 'O'
